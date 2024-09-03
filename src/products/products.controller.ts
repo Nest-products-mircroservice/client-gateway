@@ -1,8 +1,12 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, ConflictException, Controller, Delete, Get, Inject, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
+import { ClientProxy, RpcException } from '@nestjs/microservices';
+import { firstValueFrom } from 'rxjs';
+import { PaginationDto } from 'src/common';
+import { PRODUCTS_SERVICE } from 'src/config';
 
 @Controller('products')
 export class ProductsController {
-  constructor() { }
+  constructor(@Inject(PRODUCTS_SERVICE) private readonly productsClient: ClientProxy) { }
 
   @Post()
   createProduct(@Body() body: any) {
@@ -10,13 +14,19 @@ export class ProductsController {
   }
 
   @Get()
-  getAllProducts() {
-    return 'get all products';
+  getAllProducts(@Query() paginationDto: PaginationDto) {
+    return this.productsClient.send({ cmd: 'find-all-products' }, { ...paginationDto });
   }
 
   @Get(':id')
-  getOneProduct(@Param('id') id: string) {
-    return 'get one product' + id;
+  async getOneProduct(@Param('id') id: string) {
+    try {
+      return await firstValueFrom(
+        this.productsClient.send({ cmd: 'find-one-product' }, { id })
+      );
+    } catch (error) {
+      throw new RpcException(error)
+    }
   }
 
   @Patch(':id')
