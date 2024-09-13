@@ -1,9 +1,9 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Inject, ParseIntPipe } from '@nestjs/common';
-import { CreateOrderDto } from './dto/create-order.dto';
-import { UpdateOrderDto } from './dto/update-order.dto';
+import { Controller, Get, Post, Body, Patch, Param, Inject, ParseUUIDPipe, Query } from '@nestjs/common';
 import { ORDERS_SERVICE } from 'src/config';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
+import { CreateOrderDto, PaginationOrderDto, StatusDto } from './dto';
+import { PaginationDto } from 'src/common';
 
 @Controller('orders')
 export class OrdersController {
@@ -19,16 +19,16 @@ export class OrdersController {
   }
 
   @Get()
-  async findAll() {
+  async findAll(@Query() paginationDto: PaginationOrderDto) {
     try {
-      return await firstValueFrom(this.ordersClient.send({ cmd: 'find-all-orders' }, {}));
+      return await firstValueFrom(this.ordersClient.send({ cmd: 'find-all-orders' }, { ...paginationDto }));
     } catch (error) {
       throw new RpcException(error);
     }
   }
 
-  @Get(':id')
-  async findOne(@Param('id') id: string) {
+  @Get('id/:id')
+  async findOne(@Param('id', ParseUUIDPipe) id: string) {
     try {
       return await firstValueFrom(this.ordersClient.send({ cmd: 'find-one-order' }, { id }));
     } catch (error) {
@@ -36,10 +36,21 @@ export class OrdersController {
     }
   }
 
-  @Patch(':id')
-  changeState(@Param('id') id: string, @Body() updateOrderDto: UpdateOrderDto) {
+  @Get(':status')
+  async findAllByStatus(@Param() statusDto: StatusDto, @Query() paginationDto: PaginationDto) {
     try {
-      return this.ordersClient.send({ cmd: 'change-order-state' }, { ...updateOrderDto, id });
+      return await firstValueFrom(
+        this.ordersClient.send({ cmd: 'find-all-orders' }, { ...paginationDto, status: statusDto.status }),
+      );
+    } catch (error) {
+      throw new RpcException(error);
+    }
+  }
+
+  @Patch(':id')
+  changeState(@Param('id', ParseUUIDPipe) id: string, @Body() statusDto: StatusDto) {
+    try {
+      return this.ordersClient.send({ cmd: 'change-order-state' }, { status: statusDto.status, id });
     } catch (error) {
       throw new RpcException(error);
     }
