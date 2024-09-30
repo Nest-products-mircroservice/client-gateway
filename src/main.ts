@@ -14,13 +14,12 @@ async function bootstrap() {
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
-    })
+    }),
   );
 
   app.useGlobalFilters(new RpcCustomExceptionFilter());
 
   await app.listen(envs.port);
-
 
   logger.log(`Application-gateway listening on port ${envs.port}`);
 }
